@@ -19,12 +19,18 @@ public class MultiplexerTimeServer implements Runnable {
     private volatile boolean stop;
 
 
+    /**
+     * 初始化多路复用器，绑定监听端口
+     *
+     * @param port
+     */
     public MultiplexerTimeServer(int port) {
         try {
             selector = Selector.open();
-            servChannel = ServerSocketChannel.open();
-            servChannel.configureBlocking(false);
-            servChannel.socket().bind(new InetSocketAddress(port), 1024);
+            servChannel = ServerSocketChannel.open();//打开ServerSocketChannel,用于监听客户端的连接
+            servChannel.configureBlocking(false);//设置连接为非阻塞模式
+            servChannel.socket().bind(new InetSocketAddress(port), 1024);//绑定监听端口
+            servChannel.register(selector, SelectionKey.OP_ACCEPT);//将ServerSocketChannel注册到多路复用器，监听ACCEPT事件
             System.out.println("The time server is start in port:" + port);
 
         } catch (IOException e) {
@@ -65,6 +71,13 @@ public class MultiplexerTimeServer implements Runnable {
                 t.printStackTrace();
             }
         }
+        if (selector != null) {
+            try {
+                selector.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
     }
 
     private void handleInput(SelectionKey key) throws IOException {
@@ -93,9 +106,9 @@ public class MultiplexerTimeServer implements Runnable {
                     //对端链路的关闭
                     key.cancel();
                     sc.close();
-                } else {
+                } else
                     ;//读到0字节，忽略
-                }
+
             }
         }
     }
