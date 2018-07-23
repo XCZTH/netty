@@ -32,11 +32,9 @@ public class MultiplexerTimeServer implements Runnable {
             servChannel.socket().bind(new InetSocketAddress(port), 1024);//绑定监听端口
             servChannel.register(selector, SelectionKey.OP_ACCEPT);//将ServerSocketChannel注册到多路复用器，监听ACCEPT事件
             System.out.println("The time server is start in port:" + port);
-
         } catch (IOException e) {
             e.printStackTrace();
             System.exit(1);
-
         }
     }
 
@@ -84,7 +82,7 @@ public class MultiplexerTimeServer implements Runnable {
         if (key.isValid()) {
             if (key.isAcceptable()) {
                 ServerSocketChannel ssc = (ServerSocketChannel) key.channel();
-                SocketChannel sc = ssc.accept();
+                SocketChannel sc = ssc.accept();//相当于tcp的三次握手，TCP物理链路正式建立
                 sc.configureBlocking(false);
                 sc.register(selector, SelectionKey.OP_READ);
             }
@@ -92,7 +90,14 @@ public class MultiplexerTimeServer implements Runnable {
             if (key.isReadable()) {
                 SocketChannel sc = (SocketChannel) key.channel();
                 ByteBuffer readBuffer = ByteBuffer.allocate(1024);//分配缓冲区
-                int readBytes = sc.read(readBuffer);
+                int readBytes = sc.read(readBuffer);//读取请求码流
+                /**
+                 * SocketCahnnel设置为异步非阻塞模式，read是非阻塞的，使用返回值进行判断
+                 * 返回读取到的字节数
+                 * >0 : 读取到字节，对字节进行编码
+                 * =0 : 没有读取到字节，属于正常场景，忽略
+                 * <0 : 链路已经关闭，需要关闭SocketChannel,释放资源
+                 */
                 if (readBytes > 0) {
                     readBuffer.flip();//当前limit设置为了position，position设置为0
                     byte[] bytes = new byte[readBuffer.remaining()];
